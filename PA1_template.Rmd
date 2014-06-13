@@ -1,17 +1,68 @@
 # Reproducible Research: Peer Assessment 1
-
+```{r echo=FALSE}
+#set default r chunk options
+opts_chunk$set(echo=TRUE, cache=TRUE, message=FALSE)
+#set number display defaults
+options(scipen=1, digits=2)
+```
 
 ## Loading and preprocessing the data
+We will unzip the data file, activity.zip, and read the data into R.
+We will then convert the date and interval data into a more usable format.
+```{r loadData}
+#unzip data into folder called data in working directory
+unzip("activity.zip",exdir="./data")
+#read file
+steps<-read.csv("./data/activity.csv",stringsAsFactors=F)
 
+#convert date and interval into a single POSIXct column
+#pad the interval with leading zeros so Hours and minutes can be converted
+dateTime<-with(steps, paste(date,sprintf("%04d",interval)))
+steps$intervalBegin<-as.POSIXct(dateTime,format="%Y-%m-%d %H%M",tz="GMT")
+steps$intervalHHMM<-format(steps$intervalBegin,"%H:%M")
+```
 
 
 ## What is mean total number of steps taken per day?
 
-
+We will generate a histogram of the total steps per day. Additionally we will
+calculate the mean and median of total steps per day
+```{r getMean, dependson='loadData'}
+library(ggplot2)
+agg<-aggregate(steps~date,data=steps,FUN=sum)
+ggplot(agg,aes(x=steps))+
+      geom_histogram()+
+      labs(x="Daily Total Steps",
+           y="Frequency",
+           title="Histogram of Daily Total Steps\nFrom an Anonymous User of a Personal Activity Monitor")
+meanSteps<-mean(agg$steps,na.rm=T)
+medSteps<-median(agg$steps,na.rm=T)
+```
+The mean number of daily total steps is `r meanSteps`, while 
+the median is `r medSteps`.
 
 ## What is the average daily activity pattern?
+We will create a time series plot of the average number of steps across each
+5-minute interval and then determine which 5-minute interval has the maximum
+number of steps on average.
+```{r averageDaily, dependson='loadData'}
+#aggregate data
+intervalAgg<-aggregate(steps~intervalHHMM,data=steps,FUN=mean,na.rm=T)
+#convert to factor for ggplot
+intervalAgg$intervalHHMM<-as.factor(intervalAgg$intervalHHMM)
+#generate time series plot
 
-
+#create labels 
+breaks<-intervalAgg$intervalHHMM[seq(from=1,to=300,by=30)]
+ggplot(intervalAgg,aes(x=intervalHHMM,y=steps,group=1))+
+      geom_line()+
+      scale_x_discrete(breaks=breaks)+
+      labs(x="Interval",y= "Average Steps Taken",
+           title="Average Steps Taken Over 5-Minute Intervals\nFor Two Months")
+maxStepInterval<-intervalAgg[which.max(intervalAgg$steps),1]
+```
+The interval beginning at `r maxStepInterval` had the most steps taken on
+average across the two month monitoring period.
 
 ## Imputing missing values
 
